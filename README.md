@@ -2,7 +2,7 @@
 
 Deploy [Hermes Agent](https://github.com/NousResearch/hermes-agent) on [Railway](https://railway.app) with a web-based admin dashboard for configuration, gateway management, and user pairing.
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/hermes-agent-ai?referralCode=QXdhdr&utm_medium=integration&utm_source=template&utm_campaign=generic)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/hermes-agent)
 
 > Hermes Agent is an autonomous AI agent by [Nous Research](https://nousresearch.com/) that lives on your server, connects to your messaging channels (Telegram, Discord, Slack, etc.), and gets more capable the longer it runs.
 
@@ -14,7 +14,6 @@ Deploy [Hermes Agent](https://github.com/NousResearch/hermes-agent) on [Railway]
 - **Admin Dashboard** — dark-themed UI to configure providers, channels, tools, and manage the gateway
 - **One-Page Setup** — provider dropdown, checkbox-based channel/tool toggles — no config files to edit
 - **Gateway Management** — start, stop, restart the Hermes gateway from the browser
-- **Personality Editor** — manage Hermes `SOUL.md` directly from the admin UI
 - **Live Status** — stat cards for gateway state, uptime, model, and pending pairing requests
 - **Live Logs** — streaming gateway log viewer
 - **User Pairing** — approve or deny users who message your bot, revoke access anytime
@@ -91,7 +90,7 @@ Railway Container
 ├── Python Admin Server (Starlette + Uvicorn)
 │   ├── /            — Admin dashboard (Basic Auth)
 │   ├── /health      — Health check (no auth)
-│   └── /api/*       — Config, status, logs, gateway, personality, pairing
+│   └── /api/*       — Config, status, logs, gateway, pairing
 └── hermes gateway   — Managed as async subprocess
 ```
 
@@ -111,4 +110,4 @@ Open `http://localhost:8080` and log in with `admin` / `changeme`.
 ## Credits
 
 - [Hermes Agent](https://github.com/NousResearch/hermes-agent) by [Nous Research](https://nousresearch.com/)
-- UI inspired by [OpenClaw](https://github.com/praveen-ks-2001/openclaw-railway) admin template
+- UI inspired by [OpenClaw](https://github.com/open-claw/openclaw) admin template
