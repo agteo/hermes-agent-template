@@ -96,6 +96,8 @@ Railway Container
 
 The admin server runs on `$PORT` and manages the Hermes gateway as a child process. Config is stored in `/data/.hermes/.env` and `/data/.hermes/config.yaml`. Gateway stdout/stderr is captured into a ring buffer and streamed to the Logs panel.
 
+For troubleshooting embeddings key injection, `/api/status` now reports an `embeddings` block showing whether a key is visible, which key name is active (`GEMINI_API_KEY` or `GOOGLE_API_KEY`), and whether each key is coming from `.env` or process runtime variables.
+
 ## Running Locally
 
 ```bash
