@@ -92,6 +92,7 @@ ENV_VARS = [
 
 SECRET_KEYS  = {k for k, _, _, s in ENV_VARS if s}
 PROVIDER_KEYS = [k for k, _, c, _ in ENV_VARS if c == "provider"]
+EMBEDDING_KEYS = ("GEMINI_API_KEY", "GOOGLE_API_KEY")
 CHANNEL_MAP  = {
     "Telegram":    "TELEGRAM_BOT_TOKEN",
     "Discord":     "DISCORD_BOT_TOKEN",
@@ -238,7 +239,14 @@ class Gateway:
             env.update(read_env(ENV_FILE))
             model = env.get("LLM_MODEL", "")
             provider_key = next((env.get(k, "") for k in PROVIDER_KEYS if env.get(k)), "")
-            print(f"[gateway] model={model or '⚠ NOT SET'} | provider_key={'set' if provider_key else '⚠ NOT SET'}", flush=True)
+            embedding_key_name = next((k for k in EMBEDDING_KEYS if env.get(k)), "")
+            print(
+                "[gateway] "
+                f"model={model or '⚠ NOT SET'} | "
+                f"provider_key={'set' if provider_key else '⚠ NOT SET'} | "
+                f"embedding_key={(embedding_key_name + ' set') if embedding_key_name else '⚠ GEMINI_API_KEY/GOOGLE_API_KEY NOT SET'}",
+                flush=True,
+            )
             # Write config.yaml so hermes picks up the model (env vars alone aren't always enough)
             write_config_yaml(read_env(ENV_FILE))
             self.proc = await asyncio.create_subprocess_exec(
@@ -341,16 +349,33 @@ async def api_config_put(request: Request):
 async def api_status(request: Request):
     if err := guard(request): return err
     data = read_env(ENV_FILE)
+    effective_env = {**os.environ, **data}
     providers = {
         k.replace("_API_KEY","").replace("_TOKEN","").replace("HF_","HuggingFace ").replace("_"," ").title():
         {"configured": bool(data.get(k))}
         for k in PROVIDER_KEYS
     }
+    embedding_key = next((k for k in EMBEDDING_KEYS if effective_env.get(k)), "")
+    embedding_sources = {
+        k: (
+            "env_file" if data.get(k) else ("runtime_env" if os.environ.get(k) else "missing")
+        )
+        for k in EMBEDDING_KEYS
+    }
     channels = {
         name: {"configured": bool(v := data.get(key,"")) and v.lower() not in ("false","0","no")}
         for name, key in CHANNEL_MAP.items()
     }
-    return JSONResponse({"gateway": gw.status(), "providers": providers, "channels": channels})
+    return JSONResponse({
+        "gateway": gw.status(),
+        "providers": providers,
+        "channels": channels,
+        "embeddings": {
+            "configured": bool(embedding_key),
+            "key_name": embedding_key or None,
+            "sources": embedding_sources,
+        },
+    })
 
 
 async def api_logs(request: Request):
