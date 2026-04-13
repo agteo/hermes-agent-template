@@ -52,6 +52,8 @@ else:
 ENV_VARS = [
     ("LLM_MODEL",               "Model",                    "model",     False),
     ("OPENROUTER_API_KEY",       "OpenRouter",               "provider",  True),
+    ("GEMINI_API_KEY",          "Gemini (embeddings)",     "tool",      True),
+    ("GOOGLE_API_KEY",          "Google AI (embeddings)",   "tool",      True),
     ("DEEPSEEK_API_KEY",         "DeepSeek",                 "provider",  True),
     ("DASHSCOPE_API_KEY",        "DashScope",                "provider",  True),
     ("GLM_API_KEY",              "GLM / Z.AI",               "provider",  True),

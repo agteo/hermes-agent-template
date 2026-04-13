@@ -69,6 +69,8 @@ Message your Telegram bot. If you're a new user, a pairing request will appear i
 
 All other configuration (LLM provider, model, channels, tools) is managed through the admin dashboard.
 
+For Gemini/Google embeddings, set either `GEMINI_API_KEY` or `GOOGLE_API_KEY` under **Tool API Keys** (or in Railway service variables). This is independent from your selected LLM provider.
+
 ## Supported Providers
 
 OpenRouter, DeepSeek, DashScope, GLM / Z.AI, Kimi, MiniMax, HuggingFace
