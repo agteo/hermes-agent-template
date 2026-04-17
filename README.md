@@ -14,6 +14,7 @@ Deploy [Hermes Agent](https://github.com/NousResearch/hermes-agent) on [Railway]
 - **Admin Dashboard** — dark-themed UI to configure providers, channels, tools, and manage the gateway
 - **One-Page Setup** — provider dropdown, checkbox-based channel/tool toggles — no config files to edit
 - **Gateway Management** — start, stop, restart the Hermes gateway from the browser
+- **Personality Editor** — manage Hermes `SOUL.md` directly from the admin UI
 - **Live Status** — stat cards for gateway state, uptime, model, and pending pairing requests
 - **Live Logs** — streaming gateway log viewer
 - **User Pairing** — approve or deny users who message your bot, revoke access anytime
@@ -90,7 +91,7 @@ Railway Container
 ├── Python Admin Server (Starlette + Uvicorn)
 │   ├── /            — Admin dashboard (Basic Auth)
 │   ├── /health      — Health check (no auth)
-│   └── /api/*       — Config, status, logs, gateway, pairing
+│   └── /api/*       — Config, status, logs, gateway, personality, pairing
 └── hermes gateway   — Managed as async subprocess
 ```
 
