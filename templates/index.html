@@ -519,6 +519,10 @@
       <span class="nav-icon">⚡</span>
       <span>Setup</span>
     </div>
+    <div class="nav-item" :class="{active: page==='personality'}" @click="page='personality'">
+      <span class="nav-icon">🧠</span>
+      <span>Personality</span>
+    </div>
 
     <div class="nav-group-label" style="margin-top:8px">Monitor</div>
     <div class="nav-item"
@@ -743,6 +747,36 @@
       </div>
     </div>
 
+    <!-- ── Personality panel ───────────────────────── -->
+    <div class="panel" :class="{active: page==='personality'}">
+      <div class="panel-header">
+        <div class="panel-title">Personality</div>
+        <div class="panel-subtitle" x-text="personalityExists ? 'SOUL.md detected' : 'No SOUL.md yet'"></div>
+      </div>
+      <div class="panel-body">
+        <div class="section-label">SOUL.md</div>
+        <div class="card">
+          <p class="hint" style="margin-bottom:10px;">
+            Hermes uses <code>SOUL.md</code> as your agent's persistent identity and behavior scaffold.
+          </p>
+          <label class="field-label">File Contents</label>
+          <textarea
+            x-model="personalityText"
+            style="width:100%;min-height:340px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:10px;font-size:13px;font-family:var(--font-mono);line-height:1.5;resize:vertical;"
+            placeholder="# SOUL\n\nDescribe identity, values, behavior, and response style..."
+          ></textarea>
+          <div style="display:flex;gap:10px;margin-top:12px;">
+            <button class="btn primary" @click="savePersonality()" :disabled="personalitySaving">
+              <span x-show="!personalitySaving">Save SOUL.md</span>
+              <span x-show="personalitySaving">Saving…</span>
+            </button>
+            <button class="btn" @click="loadPersonality()">Reload</button>
+            <button class="btn danger" @click="resetPersonality()" :disabled="!personalityExists">Delete SOUL.md</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Status panel ────────────────────────────── -->
     <div class="panel" :class="{active: page==='status'}">
       <div class="panel-header">
@@ -909,6 +943,9 @@ function app() {
     logs: [],
     pending: [],
     approved: [],
+    personalityText: '',
+    personalityExists: false,
+    personalitySaving: false,
     saving: false,
     restartOnSave: true,
 
@@ -966,7 +1003,7 @@ function app() {
     },
 
     async init() {
-      await Promise.all([this.loadConfig(), this.loadStatus(), this.loadLogs(), this.loadPairing()]);
+      await Promise.all([this.loadConfig(), this.loadPersonality(), this.loadStatus(), this.loadLogs(), this.loadPairing()]);
       setInterval(() => this.loadStatus(),  5000);
       setInterval(() => this.loadLogs(),    3000);
       setInterval(() => this.loadPairing(), 5000);
@@ -1053,6 +1090,54 @@ function app() {
         if (pr.ok) this.pending  = (await pr.json()).pending||[];
         if (ar.ok) this.approved = (await ar.json()).approved||[];
       } catch {}
+    },
+
+    async loadPersonality() {
+      try {
+        const r = await fetch('/api/personality');
+        if (r.ok) {
+          const d = await r.json();
+          this.personalityText = d.content || '';
+          this.personalityExists = !!d.exists;
+        }
+      } catch {}
+    },
+
+    async savePersonality() {
+      this.personalitySaving = true;
+      try {
+        const r = await fetch('/api/personality', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: this.personalityText || '' }),
+        });
+        if (r.ok) {
+          this.personalityExists = true;
+          this.notify('SOUL.md saved', true);
+        } else {
+          const e = await r.json().catch(()=>{});
+          this.notify(e?.error || 'Failed to save SOUL.md', false);
+        }
+      } catch (e) {
+        this.notify('Failed to save SOUL.md: ' + e.message, false);
+      }
+      this.personalitySaving = false;
+    },
+
+    async resetPersonality() {
+      if (!confirm('Delete SOUL.md and revert to Hermes default personality behavior?')) return;
+      try {
+        const r = await fetch('/api/personality/reset', { method:'POST' });
+        if (r.ok) {
+          this.personalityText = '';
+          this.personalityExists = false;
+          this.notify('SOUL.md deleted', true);
+        } else {
+          this.notify('Failed to delete SOUL.md', false);
+        }
+      } catch (e) {
+        this.notify('Failed to delete SOUL.md: ' + e.message, false);
+      }
     },
 
     async startGw()        { await fetch('/api/gateway/start',   {method:'POST'}); this.notify('Starting…',   true); setTimeout(()=>this.loadStatus(),1000); },

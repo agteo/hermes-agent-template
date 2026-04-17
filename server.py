@@ -36,6 +36,7 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 HERMES_HOME = os.environ.get("HERMES_HOME", str(Path.home() / ".hermes"))
 ENV_FILE = Path(HERMES_HOME) / ".env"
+SOUL_FILE = Path(HERMES_HOME) / "SOUL.md"
 PAIRING_DIR = Path(HERMES_HOME) / "pairing"
 PAIRING_TTL = 3600
 
@@ -411,6 +412,34 @@ async def api_config_reset(request: Request):
     return JSONResponse({"ok": True})
 
 
+async def api_personality_get(request: Request):
+    if err := guard(request): return err
+    exists = SOUL_FILE.exists()
+    content = SOUL_FILE.read_text(encoding="utf-8") if exists else ""
+    return JSONResponse({"exists": exists, "content": content})
+
+
+async def api_personality_put(request: Request):
+    if err := guard(request): return err
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    content = body.get("content")
+    if not isinstance(content, str):
+        return JSONResponse({"error": "content must be a string"}, status_code=400)
+    SOUL_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SOUL_FILE.write_text(content, encoding="utf-8")
+    return JSONResponse({"ok": True, "exists": True, "bytes": len(content.encode('utf-8'))})
+
+
+async def api_personality_reset(request: Request):
+    if err := guard(request): return err
+    if SOUL_FILE.exists():
+        SOUL_FILE.unlink()
+    return JSONResponse({"ok": True, "exists": False})
+
+
 # ── Pairing ───────────────────────────────────────────────────────────────────
 def _pjson(path: Path) -> dict:
     try:
@@ -528,6 +557,9 @@ routes = [
     Route("/api/gateway/stop",          api_gw_stop,         methods=["POST"]),
     Route("/api/gateway/restart",       api_gw_restart,      methods=["POST"]),
     Route("/api/config/reset",          api_config_reset,    methods=["POST"]),
+    Route("/api/personality",           api_personality_get, methods=["GET"]),
+    Route("/api/personality",           api_personality_put, methods=["PUT"]),
+    Route("/api/personality/reset",     api_personality_reset, methods=["POST"]),
     Route("/api/pairing/pending",       api_pairing_pending),
     Route("/api/pairing/approve",       api_pairing_approve, methods=["POST"]),
     Route("/api/pairing/deny",          api_pairing_deny,    methods=["POST"]),
