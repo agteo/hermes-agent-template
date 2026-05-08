@@ -98,6 +98,30 @@ The admin server runs on `$PORT` and manages the Hermes gateway as a child proce
 
 For troubleshooting embeddings key injection, `/api/status` now reports an `embeddings` block showing whether a key is visible, which key name is active (`GEMINI_API_KEY` or `GOOGLE_API_KEY`), and whether each key is coming from `.env` or process runtime variables.
 
+
+## Hermes Version Strategy (Avoiding Breakage)
+
+This template now **pins Hermes Agent to a specific tag** at build time instead of always taking the latest `main` commit.
+
+- Default pinned version: `v0.10.0`
+- Override during build: `--build-arg HERMES_REF=vX.Y.Z` (or a commit SHA)
+
+Example:
+
+```bash
+docker build -t hermes-agent --build-arg HERMES_REF=v0.10.0 .
+```
+
+Recommended upgrade flow:
+
+1. Read the Hermes release notes for the target version.
+2. Build with `HERMES_REF` set to that exact tag.
+3. Deploy to a staging service first.
+4. Verify channels (Telegram/Discord/etc.), pairing, and key tools.
+5. Promote to production only after staging passes.
+
+This minimizes surprise breaking changes from upstream `main` updates.
+
 ## Running Locally
 
 ```bash
