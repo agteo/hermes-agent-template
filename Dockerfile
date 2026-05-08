@@ -5,9 +5,9 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install hermes-agent as a package (gives us the `hermes` CLI entry point)
-ARG HERMES_REF=v0.10.0
+ARG HERMES_REF=main
 
-# Pin Hermes to a known-good tag by default; override at build time with --build-arg HERMES_REF=<tag-or-sha>.
+# Default to upstream main so builds do not fail when a pinned tag is removed/renamed; override with --build-arg HERMES_REF=<tag-or-sha> for deterministic deployments.
 RUN git clone --depth 1 --branch ${HERMES_REF} https://github.com/NousResearch/hermes-agent.git /tmp/hermes-agent && \
     cd /tmp/hermes-agent && \
     uv pip install --system --no-cache -e ".[all]" && \

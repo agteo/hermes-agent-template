@@ -101,21 +101,21 @@ For troubleshooting embeddings key injection, `/api/status` now reports an `embe
 
 ## Hermes Version Strategy (Avoiding Breakage)
 
-This template now **pins Hermes Agent to a specific tag** at build time instead of always taking the latest `main` commit.
+This template now defaults to Hermes Agent `main` at build time to avoid broken builds from missing tag names.
 
-- Default pinned version: `v0.10.0`
+- Default ref: `main`
 - Override during build: `--build-arg HERMES_REF=vX.Y.Z` (or a commit SHA)
 
 Example:
 
 ```bash
-docker build -t hermes-agent --build-arg HERMES_REF=v0.10.0 .
+docker build -t hermes-agent --build-arg HERMES_REF=main .
 ```
 
 Recommended upgrade flow:
 
 1. Read the Hermes release notes for the target version.
-2. Build with `HERMES_REF` set to that exact tag.
+2. Build with `HERMES_REF` set to that exact tag or commit SHA.
 3. Deploy to a staging service first.
 4. Verify channels (Telegram/Discord/etc.), pairing, and key tools.
 5. Promote to production only after staging passes.
