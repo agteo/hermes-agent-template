@@ -17,6 +17,8 @@ from collections import deque
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from tool_routing import route_tool_payload
+
 from starlette.applications import Starlette
 from starlette.authentication import (
     AuthCredentials,
@@ -287,6 +289,26 @@ class Gateway:
         async for raw in self.proc.stdout:
             line = ANSI_ESCAPE.sub("", raw.decode(errors="replace").rstrip())
             self.logs.append(line)
+
+            # Keep image-routing policy centralized and observable for debugging.
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            if event.get("type") not in {"capture_response", "tool_result"}:
+                continue
+
+            tool_name = event.get("tool", "capture")
+            payload = event.get("payload") if isinstance(event.get("payload"), dict) else event
+            decision = route_tool_payload(tool_name, payload)
+            if decision.route_via_aux_vision:
+                self.logs.append(
+                    "[routing] "
+                    f"{tool_name} -> {decision.target_tool} "
+                    f"(reason={decision.reason})"
+                )
+
         if self.state == "running":
             self.state = "error"
             self.logs.append(f"[error] Gateway exited (code {self.proc.returncode})")
