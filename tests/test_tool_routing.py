@@ -26,5 +26,35 @@ class TestToolRouting(unittest.TestCase):
         self.assertEqual(decision.reason, "image_mime_type")
 
 
+class TestUpstreamConfigCoverage(unittest.TestCase):
+    def test_env_registry_includes_current_provider_tool_and_gateway_vars(self):
+        import server
+
+        keys = {k for k, *_ in server.ENV_VARS}
+        expected = {
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "NOVITA_API_KEY",
+            "NVIDIA_API_KEY",
+            "XAI_API_KEY",
+            "API_SERVER_ENABLED",
+            "API_SERVER_KEY",
+            "WEBHOOK_ENABLED",
+            "SIGNAL_HTTP_URL",
+            "TWILIO_ACCOUNT_SID",
+            "EXA_API_KEY",
+            "SEARXNG_URL",
+            "TOOL_GATEWAY_USER_TOKEN",
+        }
+        self.assertTrue(expected.issubset(keys))
+
+    def test_channel_map_includes_hosted_api_and_webhook_adapters(self):
+        import server
+
+        self.assertEqual(server.CHANNEL_MAP["API Server"], "API_SERVER_ENABLED")
+        self.assertEqual(server.CHANNEL_MAP["Webhooks"], "WEBHOOK_ENABLED")
+
+
+
 if __name__ == "__main__":
     unittest.main()
