@@ -335,6 +335,23 @@
     font-weight: 500;
   }
   .toggle-icon { font-size: 16px; }
+  .toggle-meta {
+    margin-left: auto;
+    color: var(--text-dim);
+    font-size: 11px;
+    font-family: var(--font-mono);
+  }
+  .inline-link {
+    color: var(--accent2);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .inline-link:hover { text-decoration: underline; }
+  .warning-card {
+    border-color: rgba(210,153,34,0.45);
+    background: rgba(210,153,34,0.08);
+  }
 
   .toggle-body {
     padding: 14px 0 6px 26px;
@@ -583,7 +600,7 @@
             </select>
           </div>
 
-          <div class="field-gap" x-show="selectedProvider">
+          <div class="field-gap" x-show="selectedProvider && providerMap[selectedProvider]?.auth==='api_key'">
             <label class="field-label">API Key</label>
             <input type="password"
                    :value="selectedProvider ? (vars[providerMap[selectedProvider]?.key]||'') : ''"
@@ -591,11 +608,33 @@
                    :placeholder="selectedProvider ? (providerMap[selectedProvider]?.placeholder||'Paste your API key') : ''">
           </div>
 
+          <div class="field-gap" x-show="selectedProvider && providerMap[selectedProvider]?.baseUrlKey">
+            <label class="field-label">Base URL <span style="color:var(--text-dim);font-weight:400;">(optional)</span></label>
+            <input type="text"
+                   :value="selectedProvider ? (vars[providerMap[selectedProvider]?.baseUrlKey]||'') : ''"
+                   @input="if(selectedProvider && providerMap[selectedProvider].baseUrlKey) vars[providerMap[selectedProvider].baseUrlKey]=$event.target.value"
+                   :placeholder="selectedProvider ? (providerMap[selectedProvider]?.baseUrlPlaceholder||'Use provider default') : ''">
+          </div>
+
+          <div class="field-gap" x-show="selectedProvider && providerMap[selectedProvider]?.auth==='aws'">
+            <div class="field-grid-2">
+              <div><label class="field-label">AWS Region</label><input type="text" :value="vars.AWS_REGION||''" @input="vars.AWS_REGION=$event.target.value" placeholder="us-east-1"></div>
+              <div><label class="field-label">AWS Profile</label><input type="text" :value="vars.AWS_PROFILE||''" @input="vars.AWS_PROFILE=$event.target.value" placeholder="default"></div>
+            </div>
+            <p class="hint" style="margin-top:6px;">Bedrock uses the boto3 credential chain. Configure AWS environment variables in Railway if you do not use a profile.</p>
+          </div>
+
+          <div class="field-gap warning-card card" x-show="selectedProvider && providerMap[selectedProvider]?.auth==='oauth'" style="padding:12px;">
+            <p style="font-size:13px;font-weight:500;">Manual OAuth setup required</p>
+            <p class="hint" style="margin-top:6px;" x-text="providerMap[selectedProvider]?.help"></p>
+            <a class="inline-link" :href="providerMap[selectedProvider]?.docs" target="_blank" rel="noreferrer">Open upstream setup docs ↗</a>
+          </div>
+
           <div class="field-gap" x-show="selectedProvider">
             <label class="field-label">LLM Model</label>
             <input type="text" :value="vars.LLM_MODEL||''" @input="vars.LLM_MODEL=$event.target.value"
                    placeholder="e.g. openai/gpt-4o-mini  or  deepseek/deepseek-chat">
-            <p class="hint">OpenRouter format: <code>provider/model-name</code></p>
+            <p class="hint">Use the model identifier expected by the selected Hermes provider.</p>
           </div>
         </div>
 
@@ -697,6 +736,80 @@
 
         </div>
 
+        <!-- API Server -->
+        <div class="section-label">
+          API Server
+          <span class="req-note">— optional OpenAI-compatible endpoint</span>
+        </div>
+        <div class="card" style="padding: 0 16px; margin-bottom:12px;">
+          <div class="toggle-row" @click="apiServerEnabled=!apiServerEnabled; setApiServerEnabled(apiServerEnabled)">
+            <input type="checkbox" :checked="apiServerEnabled" @click.stop @change="apiServerEnabled=$event.target.checked; setApiServerEnabled(apiServerEnabled)">
+            <span class="toggle-label">OpenAI-compatible API Server</span>
+            <span class="toggle-meta">/v1/chat/completions</span>
+          </div>
+          <div class="toggle-body" x-show="apiServerEnabled">
+            <div class="card warning-card" style="padding:12px;margin-bottom:12px;">
+              <p style="font-size:13px;font-weight:500;">Security warning</p>
+              <p class="hint" style="margin-top:4px;">The API server exposes Hermes with its tools, including terminal/file capabilities. Use a strong bearer key and narrow CORS origins before exposing it publicly.</p>
+            </div>
+            <div class="field-grid-2">
+              <div><label class="field-label">Host</label><input type="text" :value="vars.API_SERVER_HOST||''" @input="vars.API_SERVER_HOST=$event.target.value" placeholder="127.0.0.1 or 0.0.0.0"></div>
+              <div><label class="field-label">Port</label><input type="text" :value="vars.API_SERVER_PORT||''" @input="vars.API_SERVER_PORT=$event.target.value" placeholder="8642"></div>
+              <div><label class="field-label">Bearer Key</label><input type="password" :value="vars.API_SERVER_KEY||''" @input="vars.API_SERVER_KEY=$event.target.value" placeholder="Generated when enabled"></div>
+              <div><label class="field-label">Model Name</label><input type="text" :value="vars.API_SERVER_MODEL_NAME||''" @input="vars.API_SERVER_MODEL_NAME=$event.target.value" placeholder="hermes-agent"></div>
+            </div>
+            <div class="field-gap">
+              <label class="field-label">CORS Origins</label>
+              <input type="text" :value="vars.API_SERVER_CORS_ORIGINS||''" @input="vars.API_SERVER_CORS_ORIGINS=$event.target.value" placeholder="https://chat.example.com,http://localhost:3000">
+              <p class="hint">Leave blank for server-to-server clients such as Open WebUI. Add explicit browser origins only when needed.</p>
+            </div>
+          </div>
+        </div>
+
+
+          <!-- Signal -->
+          <div class="toggle-row" @click="channelsEnabled.signal=!channelsEnabled.signal; if(!channelsEnabled.signal) clearChannel('signal')">
+            <input type="checkbox" :checked="channelsEnabled.signal" @click.stop @change="channelsEnabled.signal=$event.target.checked; if(!channelsEnabled.signal) clearChannel('signal')">
+            <span class="toggle-icon">🔐</span>
+            <span class="toggle-label">Signal</span>
+          </div>
+          <div class="toggle-body" x-show="channelsEnabled.signal">
+            <div class="field-grid-2">
+              <div><label class="field-label">signal-cli HTTP URL</label><input type="text" :value="vars.SIGNAL_HTTP_URL||''" @input="vars.SIGNAL_HTTP_URL=$event.target.value" placeholder="http://127.0.0.1:8080"></div>
+              <div><label class="field-label">Account</label><input type="text" :value="vars.SIGNAL_ACCOUNT||''" @input="vars.SIGNAL_ACCOUNT=$event.target.value" placeholder="+15551234567"></div>
+              <div><label class="field-label">Allowed Users</label><input type="text" :value="vars.SIGNAL_ALLOWED_USERS||''" @input="vars.SIGNAL_ALLOWED_USERS=$event.target.value" placeholder="+15551234567,uuid"></div>
+            </div>
+          </div>
+
+          <!-- SMS -->
+          <div class="toggle-row" @click="channelsEnabled.sms=!channelsEnabled.sms; if(!channelsEnabled.sms) clearChannel('sms')">
+            <input type="checkbox" :checked="channelsEnabled.sms" @click.stop @change="channelsEnabled.sms=$event.target.checked; if(!channelsEnabled.sms) clearChannel('sms')">
+            <span class="toggle-icon">💬</span>
+            <span class="toggle-label">SMS / Twilio</span>
+          </div>
+          <div class="toggle-body" x-show="channelsEnabled.sms">
+            <div class="field-grid-2">
+              <div><label class="field-label">Account SID</label><input type="password" :value="vars.TWILIO_ACCOUNT_SID||''" @input="vars.TWILIO_ACCOUNT_SID=$event.target.value"></div>
+              <div><label class="field-label">Auth Token</label><input type="password" :value="vars.TWILIO_AUTH_TOKEN||''" @input="vars.TWILIO_AUTH_TOKEN=$event.target.value"></div>
+              <div><label class="field-label">Phone Number</label><input type="text" :value="vars.TWILIO_PHONE_NUMBER||''" @input="vars.TWILIO_PHONE_NUMBER=$event.target.value" placeholder="+15551234567"></div>
+              <div><label class="field-label">Webhook URL</label><input type="text" :value="vars.SMS_WEBHOOK_URL||''" @input="vars.SMS_WEBHOOK_URL=$event.target.value" placeholder="https://example.com/sms"></div>
+              <div><label class="field-label">Allowed Users</label><input type="text" :value="vars.SMS_ALLOWED_USERS||''" @input="vars.SMS_ALLOWED_USERS=$event.target.value" placeholder="+15551234567"></div>
+            </div>
+          </div>
+
+          <!-- Webhooks -->
+          <div class="toggle-row" @click="channelsEnabled.webhook=!channelsEnabled.webhook; vars.WEBHOOK_ENABLED=channelsEnabled.webhook?'true':''; if(!channelsEnabled.webhook) clearChannel('webhook')">
+            <input type="checkbox" :checked="channelsEnabled.webhook" @click.stop @change="channelsEnabled.webhook=$event.target.checked; vars.WEBHOOK_ENABLED=channelsEnabled.webhook?'true':''; if(!channelsEnabled.webhook) clearChannel('webhook')">
+            <span class="toggle-icon">🪝</span>
+            <span class="toggle-label">Webhooks</span>
+          </div>
+          <div class="toggle-body" x-show="channelsEnabled.webhook">
+            <div class="field-grid-2">
+              <div><label class="field-label">Port</label><input type="text" :value="vars.WEBHOOK_PORT||''" @input="vars.WEBHOOK_PORT=$event.target.value" placeholder="8644"></div>
+              <div><label class="field-label">Secret</label><input type="password" :value="vars.WEBHOOK_SECRET||''" @input="vars.WEBHOOK_SECRET=$event.target.value" placeholder="HMAC secret"></div>
+            </div>
+          </div>
+
         <!-- Gateway options -->
         <div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
           <input type="checkbox" :checked="vars.GATEWAY_ALLOW_ALL_USERS==='true'" @change="vars.GATEWAY_ALLOW_ALL_USERS=$event.target.checked?'true':'false'">
@@ -719,17 +832,23 @@
                 <input type="checkbox" :checked="toolsEnabled[t.key]" @click.stop
                        @change="toolsEnabled[t.key]=$event.target.checked; if(!toolsEnabled[t.key]) clearTool(t)">
                 <span class="toggle-label" x-text="t.label"></span>
+                <span class="toggle-meta" x-show="t.kind" x-text="t.kind"></span>
               </div>
               <div class="toggle-body" x-show="toolsEnabled[t.key]"
                    :style="i===tools.length-1 ? 'border-bottom:none' : ''">
                 <div>
-                  <label class="field-label">API Key</label>
-                  <input :type="t.secret?'password':'text'" :value="vars[t.key]||''" @input="vars[t.key]=$event.target.value">
+                  <label class="field-label" x-text="t.inputLabel||'API Key'"></label>
+                  <input :type="t.secret?'password':'text'" :value="vars[t.key]||''" @input="vars[t.key]=$event.target.value" :placeholder="t.placeholder||''">
+                </div>
+                <div x-show="t.baseUrlKey" class="field-gap">
+                  <label class="field-label">Base URL</label>
+                  <input type="text" :value="vars[t.baseUrlKey]||''" @input="vars[t.baseUrlKey]=$event.target.value" :placeholder="t.baseUrlPlaceholder||'Use default endpoint'">
                 </div>
                 <div x-show="t.key==='BROWSERBASE_API_KEY'" class="field-gap">
                   <label class="field-label">Project ID</label>
                   <input type="text" :value="vars.BROWSERBASE_PROJECT_ID||''" @input="vars.BROWSERBASE_PROJECT_ID=$event.target.value">
                 </div>
+                <p class="hint" x-show="t.help" x-text="t.help"></p>
               </div>
             </div>
           </template>
@@ -923,17 +1042,49 @@
 <script>
 function app() {
   const tools = [
-    { key: 'PARALLEL_API_KEY',       label: 'Parallel (search)',         secret: true  },
-    { key: 'FIRECRAWL_API_KEY',      label: 'Firecrawl (scraping)',       secret: true  },
-    { key: 'TAVILY_API_KEY',         label: 'Tavily (search)',            secret: true  },
-    { key: 'FAL_KEY',                label: 'FAL (image gen)',            secret: true  },
-    { key: 'BROWSERBASE_API_KEY',    label: 'Browserbase',                secret: true  },
-    { key: 'GITHUB_TOKEN',           label: 'GitHub',                     secret: true  },
-    { key: 'VOICE_TOOLS_OPENAI_KEY', label: 'OpenAI Voice (Whisper/TTS)', secret: true  },
-    { key: 'HONCHO_API_KEY',         label: 'Honcho (memory)',            secret: true  },
-    { key: 'GEMINI_API_KEY',          label: 'Gemini (embeddings)',       secret: true  },
-    { key: 'GOOGLE_API_KEY',          label: 'Google AI (embeddings)',    secret: true  },
+    { key: 'PARALLEL_API_KEY',       label: 'Parallel (search)',         secret: true, kind: 'search' },
+    { key: 'FIRECRAWL_API_KEY',      label: 'Firecrawl (scraping)',      secret: true, kind: 'scrape' },
+    { key: 'TAVILY_API_KEY',         label: 'Tavily (search)',           secret: true, kind: 'search', baseUrlKey: 'TAVILY_BASE_URL' },
+    { key: 'SEARXNG_URL',            label: 'SearXNG',                   secret: false, kind: 'search', inputLabel: 'Instance URL', placeholder: 'https://searxng.example.com' },
+    { key: 'EXA_API_KEY',            label: 'Exa',                       secret: true, kind: 'search' },
+    { key: 'FAL_KEY',                label: 'FAL (image gen)',           secret: true, kind: 'image' },
+    { key: 'BROWSERBASE_API_KEY',    label: 'Browserbase',               secret: true, kind: 'browser' },
+    { key: 'BROWSER_USE_API_KEY',    label: 'Browser Use',               secret: true, kind: 'browser' },
+    { key: 'GITHUB_TOKEN',           label: 'GitHub',                    secret: true, kind: 'skills' },
+    { key: 'VOICE_TOOLS_OPENAI_KEY', label: 'OpenAI Voice (Whisper/TTS)', secret: true, kind: 'voice' },
+    { key: 'GROQ_API_KEY',           label: 'Groq STT',                  secret: true, kind: 'voice' },
+    { key: 'ELEVENLABS_API_KEY',     label: 'ElevenLabs TTS',            secret: true, kind: 'voice' },
+    { key: 'MISTRAL_API_KEY',        label: 'Mistral Voice',             secret: true, kind: 'voice' },
+    { key: 'HONCHO_API_KEY',         label: 'Honcho (memory)',           secret: true, kind: 'memory' },
+    { key: 'SUPERMEMORY_API_KEY',    label: 'Supermemory',               secret: true, kind: 'memory' },
+    { key: 'DAYTONA_API_KEY',        label: 'Daytona sandboxes',         secret: true, kind: 'sandbox' },
+    { key: 'TOOL_GATEWAY_USER_TOKEN', label: 'Nous Tool Gateway',        secret: true, kind: 'managed', help: 'Usually populated by Nous Portal / hermes tools. Direct keys above remain supported as fallbacks.' },
   ];
+
+  const providerMap = {
+    'OpenRouter':       { key: 'OPENROUTER_API_KEY',  placeholder: 'sk-or-...', auth: 'api_key', baseUrlKey: 'OPENROUTER_BASE_URL' },
+    'OpenAI / compatible': { key: 'OPENAI_API_KEY', placeholder: 'sk-...', auth: 'api_key', baseUrlKey: 'OPENAI_BASE_URL', baseUrlPlaceholder: 'https://api.openai.com/v1 or custom /v1' },
+    'Anthropic':        { key: 'ANTHROPIC_API_KEY',   placeholder: 'sk-ant-...', auth: 'api_key' },
+    'Google AI Studio': { key: 'GOOGLE_API_KEY',      placeholder: 'AIza...', auth: 'api_key', baseUrlKey: 'GEMINI_BASE_URL' },
+    'DeepSeek':         { key: 'DEEPSEEK_API_KEY',    placeholder: 'sk-...', auth: 'api_key', baseUrlKey: 'DEEPSEEK_BASE_URL' },
+    'DashScope':        { key: 'DASHSCOPE_API_KEY',   placeholder: '', auth: 'api_key', baseUrlKey: 'DASHSCOPE_BASE_URL' },
+    'GLM / Z.AI':       { key: 'GLM_API_KEY',         placeholder: '', auth: 'api_key', baseUrlKey: 'GLM_BASE_URL' },
+    'Kimi':             { key: 'KIMI_API_KEY',        placeholder: '', auth: 'api_key', baseUrlKey: 'KIMI_BASE_URL' },
+    'MiniMax':          { key: 'MINIMAX_API_KEY',     placeholder: '', auth: 'api_key', baseUrlKey: 'MINIMAX_BASE_URL' },
+    'HuggingFace':      { key: 'HF_TOKEN',            placeholder: 'hf_...', auth: 'api_key', baseUrlKey: 'HF_BASE_URL' },
+    'NovitaAI':         { key: 'NOVITA_API_KEY',      placeholder: '', auth: 'api_key', baseUrlKey: 'NOVITA_BASE_URL' },
+    'NVIDIA NIM':       { key: 'NVIDIA_API_KEY',      placeholder: '', auth: 'api_key', baseUrlKey: 'NVIDIA_BASE_URL' },
+    'xAI':              { key: 'XAI_API_KEY',         placeholder: '', auth: 'api_key', baseUrlKey: 'XAI_BASE_URL' },
+    'Arcee AI':         { key: 'ARCEEAI_API_KEY',     placeholder: '', auth: 'api_key', baseUrlKey: 'ARCEE_BASE_URL' },
+    'GMI Cloud':        { key: 'GMI_API_KEY',         placeholder: '', auth: 'api_key', baseUrlKey: 'GMI_BASE_URL' },
+    'Kilo Code':        { key: 'KILOCODE_API_KEY',    placeholder: '', auth: 'api_key', baseUrlKey: 'KILOCODE_BASE_URL' },
+    'OpenCode Zen':     { key: 'OPENCODE_ZEN_API_KEY', placeholder: '', auth: 'api_key', baseUrlKey: 'OPENCODE_ZEN_BASE_URL' },
+    'OpenCode Go':      { key: 'OPENCODE_GO_API_KEY', placeholder: '', auth: 'api_key', baseUrlKey: 'OPENCODE_GO_BASE_URL' },
+    'AWS Bedrock':      { key: 'AWS_REGION',          placeholder: 'us-east-1', auth: 'aws', baseUrlKey: 'BEDROCK_BASE_URL' },
+    'Nous Portal':      { key: 'NOUS_PORTAL_AUTH',    auth: 'oauth', docs: 'https://hermes-agent.nousresearch.com/docs/integrations/nous-portal', help: 'Run hermes setup --portal or hermes model in an interactive shell, then persist the generated Hermes config in your Railway volume.' },
+    'OpenAI Codex OAuth': { key: 'OPENAI_CODEX_AUTH', auth: 'oauth', docs: 'https://hermes-agent.nousresearch.com/docs/getting-started/quickstart/', help: 'OAuth-backed providers need upstream interactive setup before this hosted dashboard can use them.' },
+    'GitHub Copilot':   { key: 'COPILOT_GITHUB_TOKEN', placeholder: 'github_pat_...', auth: 'api_key' },
+  };
 
   return {
     page: 'setup',
@@ -948,24 +1099,19 @@ function app() {
     personalitySaving: false,
     saving: false,
     restartOnSave: true,
+    apiServerEnabled: false,
 
     tools,
 
-    providerMap: {
-      'OpenRouter':  { key: 'OPENROUTER_API_KEY',  placeholder: 'sk-or-...' },
-      'DeepSeek':    { key: 'DEEPSEEK_API_KEY',     placeholder: 'sk-...'    },
-      'DashScope':   { key: 'DASHSCOPE_API_KEY',    placeholder: ''          },
-      'GLM / Z.AI':  { key: 'GLM_API_KEY',          placeholder: ''          },
-      'Kimi':        { key: 'KIMI_API_KEY',          placeholder: ''          },
-      'MiniMax':     { key: 'MINIMAX_API_KEY',       placeholder: ''          },
-      'HuggingFace': { key: 'HF_TOKEN',              placeholder: 'hf_...'   },
-    },
+    providerMap,
+
 
     selectedProvider: '',
 
     channelsEnabled: {
       telegram: false, discord: false, slack: false,
       email: false, mattermost: false, matrix: false, whatsapp: false,
+      signal: false, sms: false, webhook: false,
     },
 
     toolsEnabled: Object.fromEntries(tools.map(t => [t.key, false])),
@@ -973,33 +1119,58 @@ function app() {
     get pendingCount() { return this.pending.length; },
 
     get isSetupDone() {
-      const keys = Object.values(this.providerMap).map(p => p.key);
-      return !!(this.vars.LLM_MODEL && keys.some(k => this.vars[k]));
+      const providers = Object.values(this.providerMap).filter(p => p.auth !== 'oauth');
+      return !!(this.vars.LLM_MODEL && providers.some(p => this.vars[p.key]));
     },
 
     onProviderChange() {
       // Clear keys from other providers when switching
       for (const [name, p] of Object.entries(this.providerMap)) {
-        if (name !== this.selectedProvider) this.vars[p.key] = '';
+        if (name !== this.selectedProvider && p.auth !== 'oauth') {
+          this.vars[p.key] = '';
+          if (p.baseUrlKey) this.vars[p.baseUrlKey] = '';
+        }
       }
     },
 
     clearChannel(ch) {
       const keysMap = {
-        telegram:   ['TELEGRAM_BOT_TOKEN','TELEGRAM_ALLOWED_USERS'],
-        discord:    ['DISCORD_BOT_TOKEN','DISCORD_ALLOWED_USERS'],
-        slack:      ['SLACK_BOT_TOKEN','SLACK_APP_TOKEN'],
-        email:      ['EMAIL_ADDRESS','EMAIL_PASSWORD','EMAIL_IMAP_HOST','EMAIL_SMTP_HOST'],
+        telegram:   ['TELEGRAM_BOT_TOKEN','TELEGRAM_ALLOWED_USERS','TELEGRAM_GROUP_ALLOWED_CHATS','TELEGRAM_WEBHOOK_URL','TELEGRAM_WEBHOOK_SECRET'],
+        discord:    ['DISCORD_BOT_TOKEN','DISCORD_ALLOWED_USERS','DISCORD_ALLOWED_ROLES','DISCORD_ALLOWED_CHANNELS'],
+        slack:      ['SLACK_BOT_TOKEN','SLACK_APP_TOKEN','SLACK_ALLOWED_USERS'],
+        email:      ['EMAIL_ADDRESS','EMAIL_PASSWORD','EMAIL_IMAP_HOST','EMAIL_SMTP_HOST','EMAIL_ALLOWED_USERS'],
         mattermost: ['MATTERMOST_URL','MATTERMOST_TOKEN'],
-        matrix:     ['MATRIX_HOMESERVER','MATRIX_ACCESS_TOKEN','MATRIX_USER_ID'],
-        whatsapp:   ['WHATSAPP_ENABLED'],
+        matrix:     ['MATRIX_HOMESERVER','MATRIX_ACCESS_TOKEN','MATRIX_USER_ID','MATRIX_ALLOWED_USERS'],
+        whatsapp:   ['WHATSAPP_ENABLED','WHATSAPP_ALLOWED_USERS'],
+        signal:     ['SIGNAL_HTTP_URL','SIGNAL_ACCOUNT','SIGNAL_ALLOWED_USERS'],
+        sms:        ['TWILIO_ACCOUNT_SID','TWILIO_AUTH_TOKEN','TWILIO_PHONE_NUMBER','SMS_WEBHOOK_URL','SMS_ALLOWED_USERS'],
+        webhook:    ['WEBHOOK_ENABLED','WEBHOOK_PORT','WEBHOOK_SECRET'],
       };
       for (const k of keysMap[ch] || []) this.vars[k] = '';
     },
 
     clearTool(t) {
       this.vars[t.key] = '';
+      if (t.baseUrlKey) this.vars[t.baseUrlKey] = '';
       if (t.key === 'BROWSERBASE_API_KEY') this.vars.BROWSERBASE_PROJECT_ID = '';
+    },
+
+    setApiServerEnabled(enabled) {
+      this.vars.API_SERVER_ENABLED = enabled ? 'true' : '';
+      if (enabled) {
+        if (!this.vars.API_SERVER_HOST) this.vars.API_SERVER_HOST = '0.0.0.0';
+        if (!this.vars.API_SERVER_PORT) this.vars.API_SERVER_PORT = '8642';
+        if (!this.vars.API_SERVER_MODEL_NAME) this.vars.API_SERVER_MODEL_NAME = 'hermes-agent';
+        if (!this.vars.API_SERVER_KEY) this.vars.API_SERVER_KEY = this.randomToken();
+      } else {
+        for (const k of ['API_SERVER_HOST','API_SERVER_PORT','API_SERVER_KEY','API_SERVER_CORS_ORIGINS','API_SERVER_MODEL_NAME']) this.vars[k] = '';
+      }
+    },
+
+    randomToken() {
+      const bytes = new Uint8Array(24);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
     },
 
     async init() {
@@ -1017,7 +1188,7 @@ function app() {
           this.vars = d.vars || {};
           // Detect active provider
           for (const [name, p] of Object.entries(this.providerMap)) {
-            if (this.vars[p.key]) { this.selectedProvider = name; break; }
+            if (p.auth !== 'oauth' && this.vars[p.key]) { this.selectedProvider = name; break; }
           }
           // Detect active channels
           this.channelsEnabled = {
@@ -1028,7 +1199,11 @@ function app() {
             mattermost: !!(this.vars.MATTERMOST_URL),
             matrix:     !!(this.vars.MATRIX_HOMESERVER),
             whatsapp:   this.vars.WHATSAPP_ENABLED === 'true',
+            signal:     !!(this.vars.SIGNAL_HTTP_URL),
+            sms:        !!(this.vars.TWILIO_ACCOUNT_SID),
+            webhook:    this.vars.WEBHOOK_ENABLED === 'true',
           };
+          this.apiServerEnabled = this.vars.API_SERVER_ENABLED === 'true';
           // Detect active tools
           for (const t of this.tools) {
             this.toolsEnabled[t.key] = !!(this.vars[t.key]);
