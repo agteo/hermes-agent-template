@@ -18,6 +18,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from tool_routing import route_tool_payload
+from outer_loop import OuterLoopStore, OuterLoopWorker
 
 from starlette.applications import Starlette
 from starlette.authentication import (
@@ -41,6 +42,8 @@ ENV_FILE = Path(HERMES_HOME) / ".env"
 SOUL_FILE = Path(HERMES_HOME) / "SOUL.md"
 PAIRING_DIR = Path(HERMES_HOME) / "pairing"
 PAIRING_TTL = 3600
+OUTER_LOOP_DB = Path(os.environ.get("OUTER_LOOP_DB", str(Path(HERMES_HOME) / "outer_loop.sqlite3")))
+OUTER_LOOP_INTERVAL_SECONDS = int(os.environ.get("OUTER_LOOP_INTERVAL_SECONDS", "3600"))
 
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
@@ -160,6 +163,10 @@ ENV_VARS = [
     ("GATEWAY_ALLOW_ALL_USERS",  "Allow all users",          "gateway",   False),
     ("ADMIN_USERNAME",           "Admin username",           "admin",     False),
     ("ADMIN_PASSWORD",           "Admin password",           "admin",     True),
+    ("OUTER_LOOP_ENABLED",       "Enable gated outer loop", "gateway",   False),
+    ("OUTER_LOOP_DB",            "Outer-loop SQLite path",  "gateway",   False),
+    ("OUTER_LOOP_INTERVAL_SECONDS", "Outer-loop worker interval", "gateway", False),
+    ("AGTEO_BRAIN_DIR",          "agteo-brain notes dir",   "gateway",   False),
 ]
 
 SECRET_KEYS  = {k for k, _, _, s in ENV_VARS if s}
@@ -400,6 +407,9 @@ class Gateway:
 
 
 gw = Gateway()
+outer_loop_store = OuterLoopStore(OUTER_LOOP_DB)
+outer_loop_worker = OuterLoopWorker(outer_loop_store)
+outer_loop_task: asyncio.Task | None = None
 cfg_lock = asyncio.Lock()
 
 
@@ -629,8 +639,23 @@ async def api_pairing_revoke(request: Request):
 
 
 # ── App lifecycle ─────────────────────────────────────────────────────────────
+async def outer_loop_scheduler():
+    """Periodically analyze completed run records; candidates remain gated."""
+    while True:
+        try:
+            created = outer_loop_worker.run_once()
+            if created:
+                gw.logs.append(f"[outer-loop] generated/updated {len(created)} gated candidate lesson(s)")
+        except Exception as exc:
+            gw.logs.append(f"[outer-loop] worker error: {exc}")
+        await asyncio.sleep(OUTER_LOOP_INTERVAL_SECONDS)
+
+
 async def auto_start():
     data = read_env(ENV_FILE)
+    global outer_loop_task
+    if str(data.get("OUTER_LOOP_ENABLED", os.environ.get("OUTER_LOOP_ENABLED", "")).lower()) in {"1", "true", "yes", "on"}:
+        outer_loop_task = asyncio.create_task(outer_loop_scheduler())
     if any(data.get(k) for k in PROVIDER_KEYS):
         asyncio.create_task(gw.start())
     else:
@@ -641,6 +666,8 @@ async def auto_start():
 async def lifespan(app):
     await auto_start()
     yield
+    if outer_loop_task:
+        outer_loop_task.cancel()
     await gw.stop()
 
 
