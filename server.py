@@ -171,6 +171,19 @@ ENV_VARS = [
 
 SECRET_KEYS  = {k for k, _, _, s in ENV_VARS if s}
 PROVIDER_KEYS = [k for k, _, c, _ in ENV_VARS if c == "provider" and (k.endswith("_API_KEY") or k.endswith("_TOKEN"))]
+
+
+def effective_config_env(data: dict[str, str] | None = None) -> dict[str, str]:
+    """Return the env Hermes will actually see, with saved config taking priority."""
+    return {**os.environ, **(read_env(ENV_FILE) if data is None else data)}
+
+
+def has_configured_provider(data: dict[str, str] | None = None) -> bool:
+    """Whether any provider key is configured in .env or the runtime environment."""
+    effective_env = effective_config_env(data)
+    return any(effective_env.get(k) for k in PROVIDER_KEYS)
+
+
 EMBEDDING_KEYS = ("GEMINI_API_KEY", "GOOGLE_API_KEY")
 CHANNEL_MAP  = {
     "Telegram":    "TELEGRAM_BOT_TOKEN",
@@ -458,10 +471,10 @@ async def api_config_put(request: Request):
 async def api_status(request: Request):
     if err := guard(request): return err
     data = read_env(ENV_FILE)
-    effective_env = {**os.environ, **data}
+    effective_env = effective_config_env(data)
     providers = {
         k.replace("_API_KEY","").replace("_TOKEN","").replace("HF_","HuggingFace ").replace("_"," ").title():
-        {"configured": bool(data.get(k))}
+        {"configured": bool(effective_env.get(k))}
         for k in PROVIDER_KEYS
     }
     embedding_key = next((k for k in EMBEDDING_KEYS if effective_env.get(k)), "")
@@ -656,7 +669,7 @@ async def auto_start():
     global outer_loop_task
     if str(data.get("OUTER_LOOP_ENABLED", os.environ.get("OUTER_LOOP_ENABLED", "")).lower()) in {"1", "true", "yes", "on"}:
         outer_loop_task = asyncio.create_task(outer_loop_scheduler())
-    if any(data.get(k) for k in PROVIDER_KEYS):
+    if has_configured_provider(data):
         asyncio.create_task(gw.start())
     else:
         print("[server] No provider key found — gateway not started. Configure one in the admin UI.", flush=True)

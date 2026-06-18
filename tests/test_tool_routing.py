@@ -54,6 +54,29 @@ class TestUpstreamConfigCoverage(unittest.TestCase):
         self.assertEqual(server.CHANNEL_MAP["API Server"], "API_SERVER_ENABLED")
         self.assertEqual(server.CHANNEL_MAP["Webhooks"], "WEBHOOK_ENABLED")
 
+    def test_provider_detection_includes_runtime_environment(self):
+        import os
+        import server
+
+        old_value = os.environ.get("OPENAI_API_KEY")
+        try:
+            os.environ["OPENAI_API_KEY"] = "runtime-provider-key"
+            self.assertTrue(server.has_configured_provider({}))
+            effective = server.effective_config_env({})
+            self.assertEqual(effective["OPENAI_API_KEY"], "runtime-provider-key")
+        finally:
+            if old_value is None:
+                os.environ.pop("OPENAI_API_KEY", None)
+            else:
+                os.environ["OPENAI_API_KEY"] = old_value
+
+    def test_dockerfile_copies_server_import_dependencies(self):
+        from pathlib import Path
+
+        dockerfile = Path("Dockerfile").read_text()
+        self.assertIn("COPY server.py /app/server.py", dockerfile)
+        self.assertIn("COPY outer_loop.py /app/outer_loop.py", dockerfile)
+        self.assertIn("COPY tool_routing.py /app/tool_routing.py", dockerfile)
 
 
 if __name__ == "__main__":
