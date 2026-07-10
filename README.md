@@ -107,13 +107,13 @@ For troubleshooting embeddings key injection, `/api/status` now reports an `embe
 
 This template defaults to the latest reviewed stable Hermes Agent release so Railway builds are deterministic. See [`docs/upstream-hermes-review.md`](docs/upstream-hermes-review.md) for the upstream review and implementation backlog.
 
-- Default ref: `v2026.5.29`
+- Default ref: `v2026.7.7.2`
 - Override during build: `--build-arg HERMES_REF=vX.Y.Z` (or a commit SHA)
 
 Example:
 
 ```bash
-docker build -t hermes-agent --build-arg HERMES_REF=v2026.5.29 .
+docker build -t hermes-agent --build-arg HERMES_REF=v2026.7.7.2 .
 ```
 
 Recommended upgrade flow:
