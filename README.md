@@ -17,6 +17,7 @@ Deploy [Hermes Agent](https://github.com/NousResearch/hermes-agent) on [Railway]
 - **Live Status** — stat cards for gateway state, uptime, model, and pending pairing requests
 - **Live Logs** — streaming gateway log viewer
 - **User Pairing** — approve or deny users who message your bot, revoke access anytime
+- **Voice Readiness** — guided OpenAI or split STT/TTS credential setup for Herald voice workflows
 - **Basic Auth** — password-protected admin panel
 - **Reset Config** — one-click reset to start fresh
 
@@ -75,6 +76,10 @@ All other configuration (LLM provider, model, channels, tools) is managed throug
 
 For Gemini/Google embeddings, set either `GEMINI_API_KEY` or `GOOGLE_API_KEY` in the provider section or Railway service variables. Hermes also uses these keys for Google AI Studio provider access.
 
+Voice providers are independent from the main LLM. You can use OpenRouter for the agent and ElevenLabs for spoken replies; add OpenAI, Groq, or Mistral if Hermes also needs to transcribe incoming voice. OpenAI voice credentials can cover both transcription and speech, so all four voice keys are never required.
+
+The voice card configures credentials; it does not itself turn the Railway admin page into a live voice client. The template does not claim full-duplex audio, continuously listen for a wake/command word, or keep a browser microphone open. Telegram voice-note handling is channel-dependent and is not a wake-word experience. If reliable Telegram voice mode with wake-word activation is a launch requirement, defer voice rollout until upstream Hermes documents and ships that client/channel behavior.
+
 ## Supported Providers
 
 OpenRouter, OpenAI-compatible endpoints, Anthropic, Google AI Studio / Gemini, DeepSeek, DashScope, GLM / Z.AI, Kimi, MiniMax, Hugging Face, NovitaAI, NVIDIA NIM, xAI, Arcee AI, GMI Cloud, Kilo Code, OpenCode, AWS Bedrock, and assisted/manual entries for OAuth providers such as Nous Portal and OpenAI Codex
@@ -105,7 +110,7 @@ For troubleshooting embeddings key injection, `/api/status` now reports an `embe
 
 ## Hermes Version Strategy (Avoiding Breakage)
 
-This template defaults to the latest reviewed stable Hermes Agent release so Railway builds are deterministic. See [`docs/upstream-hermes-review.md`](docs/upstream-hermes-review.md) for the upstream review and implementation backlog.
+This template defaults to the latest build-verified Hermes Agent release so Railway builds are deterministic. See the [Herald review](docs/upstream-hermes-review-2026-08-04.md) and [`docs/upstream-hermes-review.md`](docs/upstream-hermes-review.md) for the upstream review and implementation backlog.
 
 - Default ref: `v2026.7.7.2`
 - Override during build: `--build-arg HERMES_REF=vX.Y.Z` (or a commit SHA)
@@ -125,6 +130,8 @@ Recommended upgrade flow:
 5. Promote to production only after staging passes.
 
 This minimizes surprise breaking changes from upstream `main` updates.
+
+For a non-voice adoption roadmap covering recent upstream gateway reliability, webhooks, profile routing, secret sources, grounded citations, and desktop/CLI scope boundaries, see [`docs/upstream-hermes-nonvoice-adoption-2026-08-05.md`](docs/upstream-hermes-nonvoice-adoption-2026-08-05.md).
 
 ## Running Locally
 
