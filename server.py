@@ -185,6 +185,50 @@ def has_configured_provider(data: dict[str, str] | None = None) -> bool:
 
 
 EMBEDDING_KEYS = ("GEMINI_API_KEY", "GOOGLE_API_KEY")
+VOICE_KEYS = {
+    "openai": "VOICE_TOOLS_OPENAI_KEY",
+    "groq": "GROQ_API_KEY",
+    "elevenlabs": "ELEVENLABS_API_KEY",
+    "mistral": "MISTRAL_API_KEY",
+}
+VOICE_CAPABILITIES = {
+    "telegram_voice_notes": "channel_dependent",
+    "browser_microphone": False,
+    "duplex_audio": False,
+    "wake_word": False,
+    "command_word": False,
+}
+
+
+def voice_readiness(env: dict[str, str]) -> dict[str, object]:
+    """Summarize credential capability without claiming provider connectivity."""
+    providers = {
+        name: {"configured": bool(env.get(key))}
+        for name, key in VOICE_KEYS.items()
+    }
+    transcription_ready = any(
+        providers[name]["configured"] for name in ("openai", "groq", "mistral")
+    )
+    synthesis_ready = any(
+        providers[name]["configured"] for name in ("openai", "elevenlabs")
+    )
+    return {
+        "configured": any(item["configured"] for item in providers.values()),
+        "providers": providers,
+        "transcription_ready": transcription_ready,
+        "synthesis_ready": synthesis_ready,
+        "complete_pipeline_ready": transcription_ready and synthesis_ready,
+        "capabilities": VOICE_CAPABILITIES,
+    }
+
+
+def gateway_environment() -> dict[str, str]:
+    """Build the child environment; saved values override Railway variables."""
+    env = {**os.environ, "HERMES_HOME": HERMES_HOME}
+    env.update(read_env(ENV_FILE))
+    return env
+
+
 CHANNEL_MAP  = {
     "Telegram":    "TELEGRAM_BOT_TOKEN",
     "Discord":     "DISCORD_BOT_TOKEN",
@@ -334,8 +378,7 @@ class Gateway:
             # .env values take priority over Railway env vars.
             # We build the env this way so hermes's own dotenv loading
             # (which reads the same file) doesn't shadow our values.
-            env = {**os.environ, "HERMES_HOME": HERMES_HOME}
-            env.update(read_env(ENV_FILE))
+            env = gateway_environment()
             model = env.get("LLM_MODEL", "")
             provider_key = next((env.get(k, "") for k in PROVIDER_KEYS if env.get(k)), "")
             embedding_key_name = next((k for k in EMBEDDING_KEYS if env.get(k)), "")
@@ -497,6 +540,7 @@ async def api_status(request: Request):
             "key_name": embedding_key or None,
             "sources": embedding_sources,
         },
+        "voice": voice_readiness(effective_env),
     })
 
 

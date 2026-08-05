@@ -819,13 +819,37 @@
           </div>
         </div>
 
+        <!-- Voice -->
+        <div class="section-label">
+          Voice
+          <span class="req-note">— Herald-ready credentials</span>
+        </div>
+        <div class="card">
+          <p class="hint" style="margin-bottom:12px;">
+            Your chat model and voice providers are separate: OpenRouter can remain the agent's LLM. For voice input, add OpenAI, Groq, or Mistral transcription; for voice output, add OpenAI or ElevenLabs speech. You do not need every key. This dashboard only stores credentials and never sends audio itself.
+          </p>
+          <div class="warning-card card" style="padding:12px;margin-bottom:12px;">
+            <p style="font-size:13px;font-weight:500;">Credentials only — not a voice-mode switch</p>
+            <p class="hint" style="margin-top:4px;">This does not enable a live microphone, full-duplex conversation, wake word, or command word. Telegram-style voice-note handling is channel-dependent and is not the same as always-listening voice mode. If your launch requirement is reliable Telegram wake-word activation, defer this until the upstream client/channel explicitly supports it.</p>
+          </div>
+          <div class="field-grid-2">
+            <template x-for="t in voiceTools" :key="t.key">
+              <div>
+                <label class="field-label" x-text="t.label"></label>
+                <input type="password" :value="vars[t.key]||''" @input="vars[t.key]=$event.target.value" placeholder="Optional API key">
+              </div>
+            </template>
+          </div>
+          <p class="hint" style="margin-top:12px;" x-text="voiceReadiness"></p>
+        </div>
+
         <!-- Tool API Keys -->
         <div class="section-label">
           Tool API Keys
           <span class="req-note">— optional</span>
         </div>
         <div class="card" style="padding: 0 16px;">
-          <template x-for="(t, i) in tools" :key="t.key">
+          <template x-for="(t, i) in nonVoiceTools" :key="t.key">
             <div>
               <div class="toggle-row" :style="i===tools.length-1 && !toolsEnabled[t.key] ? 'border-bottom:none' : ''"
                    @click="toolsEnabled[t.key]=!toolsEnabled[t.key]; if(!toolsEnabled[t.key]) clearTool(t)">
@@ -1102,6 +1126,17 @@ function app() {
     apiServerEnabled: false,
 
     tools,
+
+    get voiceTools() { return this.tools.filter(t => t.kind === 'voice'); },
+    get nonVoiceTools() { return this.tools.filter(t => t.kind !== 'voice'); },
+    get voiceReadiness() {
+      const stt = !!(this.vars.VOICE_TOOLS_OPENAI_KEY || this.vars.GROQ_API_KEY || this.vars.MISTRAL_API_KEY);
+      const tts = !!(this.vars.VOICE_TOOLS_OPENAI_KEY || this.vars.ELEVENLABS_API_KEY);
+      if (stt && tts) return 'Ready for voice input and output. Your main LLM may still use OpenRouter.';
+      if (tts) return 'Voice output is configured. Add OpenAI, Groq, or Mistral for voice input transcription.';
+      if (stt) return 'Voice input is configured. Add OpenAI or ElevenLabs for spoken replies.';
+      return 'Optional: add one transcription provider and one speech provider. OpenAI can provide both.';
+    },
 
     providerMap,
 
