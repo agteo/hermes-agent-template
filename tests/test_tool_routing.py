@@ -164,6 +164,35 @@ class TestUpstreamConfigCoverage(unittest.TestCase):
             else:
                 os.environ["OPENAI_API_KEY"] = old_value
 
+    def test_langfuse_v4_config_round_trips_and_masks_secret(self):
+        import os
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        import server
+
+        config = {
+            "LANGFUSE_PUBLIC_KEY": "pk-lf-project",
+            "LANGFUSE_SECRET_KEY": "sk-lf-secret-value",
+            "LANGFUSE_BASE_URL": "https://cloud.langfuse.com",
+            "LANGFUSE_TRACING_ENVIRONMENT": "production",
+            "LANGFUSE_RELEASE": "railway-build-42",
+        }
+        with tempfile.TemporaryDirectory() as td:
+            env_file = Path(td) / ".env"
+            server.write_env(env_file, config)
+            contents = env_file.read_text()
+            with patch.object(server, "ENV_FILE", env_file), patch.dict(
+                os.environ, {}, clear=False
+            ):
+                child_env = server.gateway_environment()
+
+        self.assertIn("# Observability (Langfuse v4)", contents)
+        self.assertEqual(child_env["LANGFUSE_BASE_URL"], config["LANGFUSE_BASE_URL"])
+        self.assertEqual(child_env["LANGFUSE_SECRET_KEY"], config["LANGFUSE_SECRET_KEY"])
+        self.assertEqual(server.mask(config)["LANGFUSE_SECRET_KEY"], "sk-lf-se***")
+        self.assertNotIn("LANGFUSE_HOST", {key for key, *_ in server.ENV_VARS})
+
     def test_dockerfile_copies_server_import_dependencies(self):
         from pathlib import Path
 
