@@ -138,6 +138,10 @@ why creation should remain upstream-owned until a stable self-hosted management
 contract is verified—see
 [`docs/upstream-hermes-agents-review-2026-08-18.md`](docs/upstream-hermes-agents-review-2026-08-18.md).
 
+For practical guidance on the **available** Web Dashboard badge and the
+Telegram, Slack, browser, terminal, and Kanban warnings shown during startup,
+see [`docs/dashboard-agents-and-log-warnings.md`](docs/dashboard-agents-and-log-warnings.md).
+
 ## Running Locally
 
 ```bash
