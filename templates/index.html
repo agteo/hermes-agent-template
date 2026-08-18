@@ -955,6 +955,25 @@
           <button class="btn"         @click="restartGateway()">↺ Restart</button>
         </div>
 
+        <div class="section-label">Upstream capabilities</div>
+        <div class="card" style="padding:14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+          <div>
+            <div style="font-size:13px;font-weight:600;">Hermes Web Dashboard &amp; Agents</div>
+            <div class="hint" style="margin-top:4px;"
+                 x-text="status.upstream?.web_dashboard?.available
+                   ? 'Supported by the installed Hermes CLI. Management remains upstream-owned and disabled in this admin UI.'
+                   : 'Not available in the installed Hermes build. The existing gateway remains unchanged.'"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+            <span class="chip"
+                  :class="status.upstream?.web_dashboard?.available?'green':'dim'"
+                  x-text="status.upstream?.web_dashboard?.available?'available':'not available'"></span>
+            <a class="inline-link"
+               :href="status.upstream?.web_dashboard?.docs_url || 'https://hermes-agent.nousresearch.com/docs/user-guide/features/web-dashboard'"
+               target="_blank" rel="noreferrer">Docs ↗</a>
+          </div>
+        </div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
           <div>
             <div class="section-label">Providers</div>

@@ -133,6 +133,11 @@ This minimizes surprise breaking changes from upstream `main` updates.
 
 For a non-voice adoption roadmap covering recent upstream gateway reliability, webhooks, profile routing, secret sources, grounded citations, and desktop/CLI scope boundaries, see [`docs/upstream-hermes-nonvoice-adoption-2026-08-05.md`](docs/upstream-hermes-nonvoice-adoption-2026-08-05.md).
 
+For the compatibility assessment of dashboard-created Hermes Agents—including
+why creation should remain upstream-owned until a stable self-hosted management
+contract is verified—see
+[`docs/upstream-hermes-agents-review-2026-08-18.md`](docs/upstream-hermes-agents-review-2026-08-18.md).
+
 ## Running Locally
 
 ```bash
