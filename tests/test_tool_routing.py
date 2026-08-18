@@ -27,6 +27,29 @@ class TestToolRouting(unittest.TestCase):
 
 
 class TestUpstreamConfigCoverage(unittest.TestCase):
+    def test_dashboard_probe_reports_available_without_enabling_management(self):
+        import server
+
+        capability = server.dashboard_capability_from_probe(
+            0, "Usage: hermes dashboard [OPTIONS]\nLaunch the web dashboard"
+        )
+        self.assertTrue(capability["available"])
+        self.assertEqual(capability["state"], "available")
+        self.assertFalse(capability["management_enabled"])
+        self.assertEqual(capability["docs_url"], server.UPSTREAM_DASHBOARD_DOCS)
+
+    def test_dashboard_probe_degrades_safely_for_older_builds(self):
+        import server
+
+        unsupported = server.dashboard_capability_from_probe(
+            2, "No such command: dashboard"
+        )
+        missing = server.dashboard_capability_from_probe(None, "", "not_found")
+        self.assertFalse(unsupported["available"])
+        self.assertEqual(unsupported["state"], "unsupported")
+        self.assertFalse(missing["available"])
+        self.assertEqual(missing["state"], "hermes_not_found")
+
     def test_env_registry_includes_current_provider_tool_and_gateway_vars(self):
         import server
 

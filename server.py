@@ -12,6 +12,7 @@ import os
 import re
 import secrets
 import signal
+import subprocess
 import time
 from collections import deque
 from contextlib import asynccontextmanager
@@ -198,6 +199,65 @@ VOICE_CAPABILITIES = {
     "wake_word": False,
     "command_word": False,
 }
+
+UPSTREAM_DASHBOARD_DOCS = (
+    "https://hermes-agent.nousresearch.com/docs/user-guide/features/web-dashboard"
+)
+CAPABILITY_CACHE_SECONDS = 300
+_capability_cache: tuple[float, dict[str, object]] | None = None
+
+
+def dashboard_capability_from_probe(
+    returncode: int | None, output: str, error: str | None = None
+) -> dict[str, object]:
+    """Translate a non-mutating CLI probe into a stable, non-secret status shape."""
+    normalized = output.lower()
+    available = returncode == 0 and (
+        "dashboard" in normalized or "web dashboard" in normalized
+    )
+    if error == "not_found":
+        state = "hermes_not_found"
+    elif error == "timeout":
+        state = "probe_timeout"
+    elif available:
+        state = "available"
+    else:
+        state = "unsupported"
+    return {
+        "available": available,
+        "state": state,
+        "management_enabled": False,
+        "docs_url": UPSTREAM_DASHBOARD_DOCS,
+    }
+
+
+def _probe_upstream_dashboard_sync() -> dict[str, object]:
+    """Check CLI support without starting a dashboard or changing Hermes state."""
+    try:
+        result = subprocess.run(
+            ["hermes", "dashboard", "--help"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except FileNotFoundError:
+        return dashboard_capability_from_probe(None, "", "not_found")
+    except subprocess.TimeoutExpired:
+        return dashboard_capability_from_probe(None, "", "timeout")
+    output = "\n".join((result.stdout, result.stderr))
+    return dashboard_capability_from_probe(result.returncode, output)
+
+
+async def upstream_dashboard_capability(*, refresh: bool = False) -> dict[str, object]:
+    """Return a short-lived cached probe so status polling never starts Hermes UI."""
+    global _capability_cache
+    now = time.monotonic()
+    if not refresh and _capability_cache and now - _capability_cache[0] < CAPABILITY_CACHE_SECONDS:
+        return _capability_cache[1]
+    capability = await asyncio.to_thread(_probe_upstream_dashboard_sync)
+    _capability_cache = (now, capability)
+    return capability
 
 
 def voice_readiness(env: dict[str, str]) -> dict[str, object]:
@@ -531,6 +591,7 @@ async def api_status(request: Request):
         name: {"configured": bool(v := data.get(key,"")) and v.lower() not in ("false","0","no")}
         for name, key in CHANNEL_MAP.items()
     }
+    dashboard = await upstream_dashboard_capability()
     return JSONResponse({
         "gateway": gw.status(),
         "providers": providers,
@@ -541,6 +602,7 @@ async def api_status(request: Request):
             "sources": embedding_sources,
         },
         "voice": voice_readiness(effective_env),
+        "upstream": {"web_dashboard": dashboard},
     })
 
 
