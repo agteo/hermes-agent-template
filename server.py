@@ -116,6 +116,13 @@ ENV_VARS = [
     ("DAYTONA_API_KEY",          "Daytona sandboxes",        "tool",      True),
     ("TOOL_GATEWAY_USER_TOKEN",  "Nous Tool Gateway token",  "tool",      True),
     ("TOOL_GATEWAY_DOMAIN",      "Tool Gateway domain",      "tool",      False),
+    # Langfuse v4 reads configuration from the process environment. Keeping
+    # these keys in the registry lets API saves reach the Hermes subprocess.
+    ("LANGFUSE_PUBLIC_KEY",       "Langfuse public key",      "observability", False),
+    ("LANGFUSE_SECRET_KEY",       "Langfuse secret key",      "observability", True),
+    ("LANGFUSE_BASE_URL",         "Langfuse base URL",        "observability", False),
+    ("LANGFUSE_TRACING_ENVIRONMENT", "Langfuse environment", "observability", False),
+    ("LANGFUSE_RELEASE",          "Langfuse release",         "observability", False),
     ("TELEGRAM_BOT_TOKEN",       "Bot Token",                "telegram",  True),
     ("TELEGRAM_ALLOWED_USERS",   "Allowed User IDs",         "telegram",  False),
     ("TELEGRAM_GROUP_ALLOWED_CHATS", "Group chat IDs",        "telegram",  False),
@@ -345,12 +352,13 @@ data_dir: "{HERMES_HOME}"
 
 def write_env(path: Path, data: dict[str, str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    cat_order = ["model", "provider", "tool",
+    cat_order = ["model", "provider", "tool", "observability",
                  "telegram", "discord", "slack", "whatsapp",
                  "email", "mattermost", "matrix", "signal", "sms",
                  "webhook", "api_server", "gateway"]
     cat_labels = {
         "model": "Model", "provider": "Providers", "tool": "Tools",
+        "observability": "Observability (Langfuse v4)",
         "telegram": "Telegram", "discord": "Discord", "slack": "Slack",
         "whatsapp": "WhatsApp", "email": "Email",
         "mattermost": "Mattermost", "matrix": "Matrix", "signal": "Signal",
