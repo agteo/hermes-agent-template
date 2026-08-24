@@ -21,6 +21,7 @@ RUN mkdir -p /data/.hermes
 COPY server.py /app/server.py
 COPY outer_loop.py /app/outer_loop.py
 COPY tool_routing.py /app/tool_routing.py
+COPY skills/ /app/skills/
 COPY templates/ /app/templates/
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh

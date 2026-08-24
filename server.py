@@ -116,6 +116,8 @@ ENV_VARS = [
     ("DAYTONA_API_KEY",          "Daytona sandboxes",        "tool",      True),
     ("TOOL_GATEWAY_USER_TOKEN",  "Nous Tool Gateway token",  "tool",      True),
     ("TOOL_GATEWAY_DOMAIN",      "Tool Gateway domain",      "tool",      False),
+    ("RENDER_API_URL",           "Render API URL",            "tool",      False),
+    ("AGENT_API_KEY",            "Render API agent key",      "tool",      True),
     # Langfuse v4 reads configuration from the process environment. Keeping
     # these keys in the registry lets API saves reach the Hermes subprocess.
     ("LANGFUSE_PUBLIC_KEY",       "Langfuse public key",      "observability", False),

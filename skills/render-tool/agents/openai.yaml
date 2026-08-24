@@ -1,0 +1,4 @@
+interface:
+  display_name: "Render Queue"
+  short_description: "Create and manage remote image and video renders"
+  default_prompt: "Create or manage a render queue job for the user."

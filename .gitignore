@@ -7,4 +7,10 @@ __pycache__/
 ref_only/
 ref_ui_only/
 skills/
+!skills/
+skills/*
+!skills/render-tool/
+!skills/render-tool/**
+skills/**/__pycache__/
+skills/**/*.pyc
 OVERVIEW.md
