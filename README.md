@@ -76,8 +76,14 @@ Message your Telegram bot. If you're a new user, a pairing request will appear i
 | `LANGFUSE_BASE_URL` | `https://cloud.langfuse.com` (SDK default) | Langfuse v4 API base URL; replaces legacy `LANGFUSE_HOST` |
 | `LANGFUSE_TRACING_ENVIRONMENT` | *(SDK default)* | Environment attached to Langfuse traces |
 | `LANGFUSE_RELEASE` | *(unset)* | Application release attached to Langfuse traces |
+| `RENDER_API_URL` | `https://egpu-worker-production.up.railway.app` | Remote render queue API used by the bundled render skill |
+| `AGENT_API_KEY` | *(unset)* | Bearer credential for the remote render queue; never configure worker/admin/storage credentials |
 
 All other configuration (LLM provider, model, channels, tools) is managed through the admin dashboard.
+
+### Remote render queue
+
+The bundled `render-tool` skill lets Hermes create, check, list, and cancel image or explicitly requested video jobs. Configure `RENDER_API_URL` and `AGENT_API_KEY` as Railway service variables and restart the gateway. The skill talks only to the Railway API; jobs can remain safely queued while the local render worker is offline. Completed-job checks return refreshed signed delivery URLs.
 
 ### Langfuse v4
 

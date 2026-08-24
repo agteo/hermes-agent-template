@@ -72,6 +72,8 @@ class TestUpstreamConfigCoverage(unittest.TestCase):
             "GROQ_API_KEY",
             "ELEVENLABS_API_KEY",
             "MISTRAL_API_KEY",
+            "RENDER_API_URL",
+            "AGENT_API_KEY",
         }
         self.assertTrue(expected.issubset(keys))
 
@@ -200,6 +202,7 @@ class TestUpstreamConfigCoverage(unittest.TestCase):
         self.assertIn("COPY server.py /app/server.py", dockerfile)
         self.assertIn("COPY outer_loop.py /app/outer_loop.py", dockerfile)
         self.assertIn("COPY tool_routing.py /app/tool_routing.py", dockerfile)
+        self.assertIn("COPY skills/ /app/skills/", dockerfile)
 
 
 if __name__ == "__main__":
