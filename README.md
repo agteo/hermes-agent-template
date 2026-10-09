@@ -138,13 +138,13 @@ For troubleshooting embeddings key injection, `/api/status` now reports an `embe
 
 This template defaults to the latest build-verified Hermes Agent release so Railway builds are deterministic. See the [Herald review](docs/upstream-hermes-review-2026-08-04.md) and [`docs/upstream-hermes-review.md`](docs/upstream-hermes-review.md) for the upstream review and implementation backlog.
 
-- Default ref: `v2026.7.7.2`
+- Default ref: `v2026.7.20` (controlled upgrade; newer upstream releases exist)
 - Override during build: `--build-arg HERMES_REF=vX.Y.Z` (or a commit SHA)
 
 Example:
 
 ```bash
-docker build -t hermes-agent --build-arg HERMES_REF=v2026.7.7.2 .
+docker build -t hermes-agent --build-arg HERMES_REF=v2026.7.20 .
 ```
 
 Recommended upgrade flow:
@@ -156,6 +156,20 @@ Recommended upgrade flow:
 5. Promote to production only after staging passes.
 
 This minimizes surprise breaking changes from upstream `main` updates.
+
+### Memory and context
+
+New configuration defaults to 4,000 characters for persistent agent notes and
+2,000 for the user profile. Dashboard saves and gateway starts preserve explicit
+memory limits, provider settings, compression settings, and other upstream config
+in `/data/.hermes/config.yaml`. Existing explicit limits remain in effect; set
+them to 4000/2000 in that file if needed. Reset Config deliberately restores the
+template defaults. YAML formatting and comments are normalized when saving.
+
+Larger memory caps reduce capacity errors but do not expand the conversation
+context window. Use `/new` at task boundaries to load fresh memory, `session_search`
+for historical details, and `/compress` for a long active session. See the
+[memory/context review and deployment checklist](docs/memory-context-review-2026-10-09.md).
 
 For a non-voice adoption roadmap covering recent upstream gateway reliability, webhooks, profile routing, secret sources, grounded citations, and desktop/CLI scope boundaries, see [`docs/upstream-hermes-nonvoice-adoption-2026-08-05.md`](docs/upstream-hermes-nonvoice-adoption-2026-08-05.md).
 

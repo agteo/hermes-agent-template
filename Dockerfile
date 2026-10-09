@@ -5,9 +5,9 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install hermes-agent as a package (gives us the `hermes` CLI entry point)
-ARG HERMES_REF=v2026.7.7.2
+ARG HERMES_REF=v2026.7.20
 
-# Default to the latest reviewed stable upstream release; override with --build-arg HERMES_REF=<tag-or-sha> for controlled upgrades.
+# Default to a reviewed upstream release; override with --build-arg HERMES_REF=<tag-or-sha> for controlled upgrades.
 RUN git clone --depth 1 --branch ${HERMES_REF} https://github.com/NousResearch/hermes-agent.git /tmp/hermes-agent && \
     cd /tmp/hermes-agent && \
     uv pip install --system --no-cache -e ".[all]" && \

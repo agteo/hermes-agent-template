@@ -18,6 +18,8 @@ from collections import deque
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import yaml
+
 from tool_routing import route_tool_payload
 from outer_loop import OuterLoopStore, OuterLoopWorker
 
@@ -330,26 +332,36 @@ def read_env(path: Path) -> dict[str, str]:
     return out
 
 
-def write_config_yaml(data: dict[str, str]) -> None:
-    """Write a minimal config.yaml so hermes picks up the model and provider."""
+def write_config_yaml(data: dict[str, str], *, reset: bool = False) -> None:
+    """Update dashboard-owned settings without erasing upstream configuration."""
     model = data.get("LLM_MODEL", "")
     config_path = Path(HERMES_HOME) / "config.yaml"
+    config = {}
+    if config_path.exists() and not reset:
+        config = yaml.safe_load(config_path.read_text())
+        if config is None:
+            config = {}
+        if not isinstance(config, dict):
+            raise ValueError("config.yaml must contain a mapping")
+
+    # Validate before writing so invalid config is never silently discarded.
+    for section in ("model", "terminal", "agent", "memory"):
+        if section in config and not isinstance(config[section], dict):
+            raise ValueError(f"config.yaml {section} must contain a mapping")
+        config.setdefault(section, {})
+
+    config["model"].update(default=model, provider="auto")
+    for key, value in {"backend": "local", "timeout": 60, "cwd": "/tmp"}.items():
+        config["terminal"].setdefault(key, value)
+    config["agent"].setdefault("max_iterations", 50)
+    # Larger persistent-note defaults; preserve explicit volume configuration.
+    config["memory"].setdefault("memory_char_limit", 4000)
+    config["memory"].setdefault("user_char_limit", 2000)
+    config["data_dir"] = HERMES_HOME
     config_path.parent.mkdir(parents=True, exist_ok=True)
-    config_path.write_text(f"""\
-model:
-  default: "{model}"
-  provider: "auto"
-
-terminal:
-  backend: "local"
-  timeout: 60
-  cwd: "/tmp"
-
-agent:
-  max_iterations: 50
-
-data_dir: "{HERMES_HOME}"
-""")
+    temporary = config_path.with_suffix(".yaml.tmp")
+    temporary.write_text(yaml.safe_dump(config, sort_keys=False))
+    temporary.replace(config_path)
 
 
 def write_env(path: Path, data: dict[str, str]) -> None:
@@ -645,7 +657,7 @@ async def api_config_reset(request: Request):
     async with cfg_lock:
         if ENV_FILE.exists():
             ENV_FILE.unlink()
-        write_config_yaml({})
+        write_config_yaml({}, reset=True)
     return JSONResponse({"ok": True})
 
 
